@@ -1,0 +1,90 @@
+#!/bin/bash
+#
+# Create configuration for DAFGU backup agent.
+
+
+if [ "$3" == "/" ]; then
+    target=""
+else
+    target="$3"
+fi
+
+# We have a launchd job here.
+launchdplist="$target/Library/LaunchDaemons/se.gu.gu.DAFGUBackup.plist"
+# We store configuration files here.
+dafgudir="$target/Users/.dafgu"
+
+
+# Create configuration directory.
+echo "Creating $dafgudir"
+
+# Re-use old backup UUID if it exists, otherwise generate a new.
+if [ -d "$dafgudir" -a -n "$(shopt -s nullglob; echo "$dafgudir/backupuuid-"*)" ]; then
+    backupuuid=`cat "$dafgudir/backupuuid-"*`
+    echo "Reusing backupuuid: $backupuuid"
+else
+    backupuuid=`uuidgen`
+    echo "Generated new backupuuid: $backupuuid"
+fi
+
+# Get the current hostname.
+hostname=`scutil --get LocalHostName`
+echo "Using hostname: $hostname"
+
+# Get the primary MAC address.
+macaddr=`ifconfig en0 | awk '/ether/ {print $2}'`
+echo "Using MAC address: $macaddr"
+
+# Create a fresh dafgudir.
+rm -rf "$dafgudir"
+mkdir -p "$dafgudir"
+echo $backupuuid > "$dafgudir/backupuuid-$backupuuid"
+echo $hostname > "$dafgudir/hostname-$hostname"
+echo $macaddr > "$dafgudir/macaddr-$macaddr"
+
+
+# Disable sleep when not on battery power.
+pmset -c sleep 0
+
+
+# Install launchd job.
+echo "Installing $launchdplist"
+
+# Unload old launchd job if needed.
+if [ -f "$launchdplist" ]; then
+    echo "Unloading old launchd job"
+    /bin/launchctl unload "$launchdplist"
+    echo "Removing old launchd plist"
+    rm -f "$launchdplist"
+fi
+
+# Create a new one.
+echo "Creating $launchdplist"
+cat > "$launchdplist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>se.gu.gu.DAFGUBackup</string>
+    <key>ProgramArguments</key>
+    <array>
+       <string>/usr/local/munki/run_backup.py</string>
+       <string>--randomdelay</string>
+       <string>3600</string>
+       <string>/Users/</string>
+       <string>dafgubackup@macmig.it.gu.se:$backupuuid</string>
+    </array>
+    <key>StandardOutPath</key>
+    <string>/var/log/dafgubackup.log</string>
+    <key>StandardErrorPath</key>
+    <string>/var/log/dafgubackup.log</string>
+    <key>StartInterval</key>
+    <integer>60</integer>
+</dict>
+</plist>
+EOF
+
+# Load the launchd job.
+echo "Loading launchd job"
+/bin/launchctl load "$launchdplist"
