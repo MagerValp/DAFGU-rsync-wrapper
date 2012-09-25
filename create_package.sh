@@ -33,6 +33,8 @@ echo "Creating directory structure"
 mkdir -p "$pkgroot/private/var/root"
 mkdir -p "$pkgroot/usr/local/munki"
 cp -rp ssh "$pkgroot/private/var/root/.ssh"
+rm -f "$pkgroot/private/var/root/.ssh/README"*
+rm -f "$pkgroot/private/var/root/.ssh/".??*
 chmod 0700 "$pkgroot/private/var/root/.ssh"
 chmod 0600 "$pkgroot/private/var/root/.ssh/id_rsa"
 cp run_backup.py dafgu_filter.txt "$pkgroot/usr/local/munki"
