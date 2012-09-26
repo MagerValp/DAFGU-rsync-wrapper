@@ -3,6 +3,7 @@ rsync wrapper
 
 This is a wrapper that runs rsync and saves the result to a plist. It also updates DAFGU Migration Status if it's running.
 
+The script assumes that rsync3 is installed in /usr/local/bin. A precompiled binary can be downloaded from Rudix: http://code.google.com/p/rudix/wiki/rsync
 
 License
 -------
